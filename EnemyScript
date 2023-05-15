@@ -1,0 +1,58 @@
+using UnityEngine;
+
+public class EnemyScript : MonoBehaviour
+{
+    public int xp = 1;
+    public float attackRange = 2f;
+    public int attackDamage = 1;
+    public Animator enemyAnimator;
+
+    private GameObject player;
+
+    private void Start()
+    {
+        player = GameObject.FindGameObjectWithTag("Player");
+    }
+
+    private void Update()
+    {
+        if (player != null)
+        {
+            float distance = Vector3.Distance(transform.position, player.transform.position);
+
+            if (distance <= attackRange)
+            {
+                Attack();
+            }
+        }
+    }
+
+    private void Attack()
+    {
+        // Apply damage to the player
+        PlayerScript playerScript = player.GetComponent<PlayerScript>();
+        if (playerScript != null)
+        {
+            playerScript.TakeDamage(attackDamage);
+        }
+    }
+
+    public void Die()
+    {
+        // Play death animation
+        if (enemyAnimator != null)
+        {
+            enemyAnimator.SetTrigger("Death");
+        }
+
+        // Give XP to the player
+        PlayerScript playerScript = player.GetComponent<PlayerScript>();
+        if (playerScript != null)
+        {
+            playerScript.AddXP(xp);
+        }
+
+        // Destroy the enemy after a delay
+        Destroy(gameObject, 1f);
+    }
+}
