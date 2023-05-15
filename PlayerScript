@@ -1,147 +1,89 @@
 using UnityEngine;
-using UnityEngine.UI;
 
 public class PlayerScript : MonoBehaviour
 {
-    public Animator playerAnimator;
-    public float attackRange = 2f;
-    public LayerMask enemyLayer;
-    public Text healthText;
-    public Text xpText;
-    public Text gameResultText;
+    public int maxHealth = 10;
+    public int maxXP = 10;
     public GameObject shieldEffect;
 
-    private int currentHealth = 10;
-    private int maxHealth = 10;
-    private int currentXP = 0;
-    private int maxXP = 10;
-    private bool isAttacking = false;
+    private int currentHealth;
+    private int currentXP;
     private bool hasShield = false;
-    private int enemiesDestroyed = 0;
+
+    private GameManager gameManager;
 
     private void Start()
     {
-        UpdateUI();
-    }
-
-    private void Update()
-    {
-        // Implement player controls and movements here
-
-        if (Input.GetKeyDown(KeyCode.Space) && !isAttacking)
-        {
-            Attack();
-        }
-    }
-
-    private void Attack()
-    {
-        isAttacking = true;
-        playerAnimator.SetTrigger("Attack");
-
-        // Detect enemies within the attack range
-        Collider[] hitEnemies = Physics.OverlapSphere(transform.position, attackRange, enemyLayer);
-
-        foreach (Collider enemy in hitEnemies)
-        {
-            // Check if the enemy is within the attack range
-            if (Vector3.Distance(transform.position, enemy.transform.position) <= attackRange)
-            {
-                EnemyScript enemyScript = enemy.GetComponent<EnemyScript>();
-
-                if (enemyScript != null)
-                {
-                    if (hasShield)
-                    {
-                        // Destroy enemy without checking XP
-                        DestroyEnemy(enemy);
-                        break;
-                    }
-                    else if (currentXP > enemyScript.xp)
-                    {
-                        // Destroy enemy and gain XP
-                        DestroyEnemy(enemy);
-                        currentXP += enemyScript.xp;
-                        if (currentXP > maxXP)
-                            currentXP = maxXP;
-                    }
-                    else
-                    {
-                        // Reduce player's health
-                        currentHealth -= 3;
-                        if (currentHealth <= 0)
-                        {
-                            // Player has lost the game
-                            currentHealth = 0;
-                            gameResultText.text = "Game Over";
-                            Debug.Log("Game Over");
-                        }
-                    }
-
-                    UpdateUI();
-                }
-            }
-        }
-
-        isAttacking = false;
-    }
-
-    private void DestroyEnemy(Collider enemy)
-    {
-        // Play enemy death animation
-        Animator enemyAnimator = enemy.GetComponent<Animator>();
-        if (enemyAnimator != null)
-        {
-            enemyAnimator.SetTrigger("Death");
-        }
-
-        // Destroy the enemy after a delay
-        Destroy(enemy.gameObject, 1f);
-
-        enemiesDestroyed++;
-
-        if (enemiesDestroyed >= GameObject.FindGameObjectsWithTag("Enemy").Length)
-        {
-            // Player has won the game
-            gameResultText.text = "You Win!";
-            Debug.Log("You Win!");
-        }
-    }
-
-    private void UpdateUI()
-    {
-        healthText.text = "Health: " + currentHealth.ToString() + " / " + maxHealth.ToString();
-        xpText.text = "XP: " + currentXP.ToString() + " / " + maxXP.ToString();
+        currentHealth = maxHealth;
+        currentXP = 0;
+        gameManager = GameManager.Instance;
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Shield"))
+        if (other.CompareTag("Enemy"))
         {
-            // Collect the shield
-            hasShield = true;
-
-            // Destroy the shield
-            Destroy(other.gameObject);
-
-            // Play shield effect on the player
-            shieldEffect.SetActive(true);
+            EnemyScript enemy = other.GetComponent<EnemyScript>();
+            if (enemy != null)
+            {
+                if (currentXP > enemy.GetXP())
+                {
+                    DestroyEnemy(enemy);
+                }
+                else
+                {
+                    if (hasShield)
+                    {
+                        DestroyEnemy(enemy);
+                        StopShieldEffect();
+                        hasShield = false;
+                    }
+                    else
+                    {
+                        TakeDamage(3);
+                    }
+                }
+            }
+        }
+        else if (other.CompareTag("Shield"))
+        {
+            CollectShield(other.gameObject);
         }
     }
 
-    private void OnTriggerExit(Collider other)
+    private void DestroyEnemy(EnemyScript enemy)
     {
-        if (other.CompareTag("Shield"))
+        gameManager.IncreaseXP(enemy.GetXP());
+        enemy.PlayDeathAnimation();
+        Destroy(enemy.gameObject);
+    }
+
+    private void TakeDamage(int amount)
+    {
+        currentHealth -= amount;
+        gameManager.UpdateHealth(currentHealth);
+
+        if (currentHealth <= 0)
         {
-            // Stop the shield effect once the player moves away from the shield
-            shieldEffect.SetActive(false);
+            gameManager.GameOver();
         }
     }
 
-   private void OnDrawGizmosSelected()
+    private void CollectShield(GameObject shield)
     {
-        // Draw attack range sphere in the Scene view for visualization
-        Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(transform.position, attackRange);
+        hasShield = true;
+        gameManager.CollectShield();
+        Destroy(shield);
+        PlayShieldEffect();
+    }
+
+    private void PlayShieldEffect()
+    {
+        shieldEffect.SetActive(true);
+    }
+
+    private void StopShieldEffect()
+    {
+        shieldEffect.SetActive(false);
     }
 }
