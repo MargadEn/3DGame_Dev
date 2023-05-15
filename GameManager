@@ -5,33 +5,62 @@ public class GameManager : MonoBehaviour
 {
     public TextMeshProUGUI healthText;
     public TextMeshProUGUI xpText;
+    public TextMeshProUGUI resultText;
 
     private int health = 10;
     private int xp = 0;
+    private bool gameEnded = false;
 
     void Start()
     {
         healthText.text = "Health: " + health.ToString();
         xpText.text = "XP: " + xp.ToString();
+        resultText.gameObject.SetActive(false);
     }
 
-    // Method to decrease player's health
     public void DecreaseHealth(int amount)
     {
+        if (gameEnded)
+            return;
+
         health -= amount;
         healthText.text = "Health: " + health.ToString();
 
         if (health <= 0)
         {
-            // Handle game over logic
-            Debug.Log("Game Over");
+            EndGame(false);
         }
     }
 
-    // Method to increase player's experience points
     public void IncreaseXP(int amount)
     {
+        if (gameEnded)
+            return;
+
         xp += amount;
         xpText.text = "XP: " + xp.ToString();
+
+        // Check if all enemies are destroyed
+        GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
+        if (enemies.Length == 0)
+        {
+            EndGame(true);
+        }
+    }
+
+    void EndGame(bool victory)
+    {
+        gameEnded = true;
+
+        if (victory)
+        {
+            resultText.text = "You Win!";
+        }
+        else
+        {
+            resultText.text = "Game Over";
+        }
+
+        resultText.gameObject.SetActive(true);
     }
 }
